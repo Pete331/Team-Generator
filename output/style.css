@@ -1,0 +1,20 @@
+body {
+  background-image: url(https://www.toptal.com/designers/subtlepatterns/patterns/crisp_paper_ruffles.png);
+  font-family: "Varela Round", sans-serif;
+  width: 100% !important;
+}
+
+.team-heading {
+  background-color: grey;
+  color: white;
+}
+
+.border-3 {
+  border-bottom-width: 10px !important;
+  border-bottom-style: solid;
+  border-color: #5bc0de;
+}
+
+.employee-card {
+  margin: 10px;
+}

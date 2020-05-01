@@ -1,124 +1,35 @@
 const Manager = require("./lib/Manager");
 const Engineer = require("./lib/Engineer");
 const Intern = require("./lib/Intern");
+const managerQuestions = require("./lib/managerQuestions");
+const employeeQuestions = require("./lib/employeeQuestions");
 const inquire = require("inquirer");
 const fs = require("fs");
 
+// start with an empty team
 var teamList = [];
-const managerQuestions = [
-  {
-    type: "input",
-    name: "name",
-    default: "Pete",
-    message: "Enter manager name:",
-    validate: (answer) => {
-      if (answer === "") {
-        return "Please enter at least one character.";
-      }
-      return true;
-    },
-  },
-  {
-    type: "input",
-    name: "email",
-    message: "Enter manager's email:",
-    default: "Pete@work.com",
-    validate: (answer) => {
-      if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(answer)) {
-        return true;
-      }
-      return "Please enter a valid email address.";
-    },
-  },
-  {
-    type: "input",
-    name: "officeNum",
-    message: "Enter office number:",
-    default: "123",
-    validate: (answer) => {
-      if (isNaN(answer)) {
-        return "Please enter a number";
-      }
-      return true;
-    },
-  },
-  {
-    type: "list",
-    name: "hasTeam",
-    message: "Do you have any team members?",
-    choices: ["Yes", "No"],
-  },
-];
 
-const employeeQuestions = [
-  {
-    type: "input",
-    name: "name",
-    message: "Enter employee name:",
-    default: "Joe employee",
-    validate: (answer) => {
-      if (answer == "") {
-        return "Please enter at least one character.";
-      }
-      return true;
-    },
-  },
-  {
-    type: "input",
-    name: "email",
-    message: "Enter their email:",
-    default: "Joe@employee.com",
-    validate: (answer) => {
-      if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(answer)) {
-        return true;
-      }
-      return "Please enter a valid email address.";
-    },
-  },
-  {
-    type: "list",
-    name: "role",
-    message: "What is their role?",
-    choices: ["engineer", "intern"],
-  },
-  {
-    when: (input) => {
-      return input.role === "engineer";
-    },
-    type: "input",
-    name: "github",
-    message: "Engineer, enter your github username:",
-    default: "Pete331",
-    validate: (answer) => {
-      if (answer === "") {
-        return "Please enter at least one character";
-      }
-      return true;
-    },
-  },
-  {
-    when: (input) => {
-      return input.role === "intern";
-    },
-    type: "input",
-    name: "school",
-    message: "Intern, enter your school name:",
-    default: "UWA",
-    validate: (answer) => {
-      if (answer === "") {
-        return "Please enter at least one character.";
-      }
-      return true;
-    },
-  },
-  {
-    type: "list",
-    name: "addAnother",
-    message: "Add another team member?",
-    choices: ["Yes", "No"],
-  },
-];
+// asks managerQuestions and sets the teamManager variable according to manager constructor
+function init() {
+  inquire.prompt(managerQuestions).then((managerInfo) => {
+    let teamManager = new Manager(
+      managerInfo.name,
+      1,
+      managerInfo.email,
+      managerInfo.officeNum
+    );
+    teamList.push(teamManager);
+    // adds a space between manager and first employee in terminal
+    console.log(" ");
+    if (managerInfo.hasTeam === "Yes") {
+      buildTeamList();
+    } else {
+      buildHtmlPage();
+    }
+  });
+}
 
+// asks for emplyee information
 function buildTeamList() {
   inquire.prompt(employeeQuestions).then((employeeInfo) => {
     if (employeeInfo.role === "engineer") {
@@ -147,23 +58,15 @@ function buildTeamList() {
 }
 
 function buildHtmlPage() {
-  fs.mkdir("./output", function (err) {
-    if (err) {
-      console.log(
-        "You already have an output directory, you have just overwritten the directory"
-      );
-    }
-  });
   fs.writeFileSync(
-    "./output/teamPage.html",
+    `./output/${teamList[0].name}TeamPage.html`,
     fs.readFileSync("./templates/main.html"),
     function (err) {
       if (err) throw err;
     }
   );
 
-  console.log("Page generated!");
-
+  // loops over teamList objects and calls them member
   for (member of teamList) {
     if (member.getRole() === "Manager") {
       buildHtmlCard(
@@ -191,17 +94,35 @@ function buildHtmlPage() {
       );
     }
   }
-  // // adds html tags once all cards have been added
-  // fs.appendFileSync(
-  //   "./output/teamPage.html",
-  //   "</div></main></body></html>",
-  //   function (err) {
-  //     if (err) throw err;
-  //   }
-  // );
-  console.log(teamList);
+  // updates team size in html
+  fs.readFile(`./output/${teamList[0].name}TeamPage.html`, "utf8", function (
+    err,
+    data
+  ) {
+    if (err) throw err;
+    const teamSize = data.replace("{teamSize}", teamList.length);
+    fs.writeFileSync(
+      `./output/${teamList[0].name}TeamPage.html`,
+      teamSize,
+      "utf8",
+      function (err) {
+        if (err) throw err;
+      }
+    );
+  });
+
+  // adds html tags once all cards have been added
+  fs.appendFileSync(
+    `./output/${teamList[0].name}TeamPage.html`,
+    "</div></div></body></html>",
+    function (err) {
+      if (err) throw err;
+    }
+  );
+  console.log("Your Team page has been completed - find it in the output folder");
 }
 
+// replaces html tags within appropriate employee template and then appends to teampage
 function buildHtmlCard(memberType, name, id, email, additionalOutput) {
   let data = fs.readFileSync(`./templates/${memberType}.html`, "utf8");
   data = data.replace("{{ name }}", name);
@@ -211,28 +132,14 @@ function buildHtmlCard(memberType, name, id, email, additionalOutput) {
   data = data.replace("{{ email }}", email);
   data = data.replace("{{ additionalOutput }}", additionalOutput);
   data = data.replace("{{ additionalOutput }}", additionalOutput);
-  fs.appendFileSync("./output/teamPage.html", data, (err) => {
-    if (err) throw err;
-  });
-  console.log(`${memberType} Card appended`);
-}
-
-function init() {
-  inquire.prompt(managerQuestions).then((managerInfo) => {
-    let teamManager = new Manager(
-      managerInfo.name,
-      1,
-      managerInfo.email,
-      managerInfo.officeNum
-    );
-    teamList.push(teamManager);
-    console.log(" ");
-    if (managerInfo.hasTeam === "Yes") {
-      buildTeamList();
-    } else {
-      buildHtmlPage();
+  fs.appendFileSync(
+    `./output/${teamList[0].name}TeamPage.html`,
+    data,
+    (err) => {
+      if (err) throw err;
     }
-  });
+  );
+  console.log(`${memberType} Card appended`);
 }
 
 init();
