@@ -3,7 +3,7 @@ const Engineer = require("./lib/Engineer");
 const Intern = require("./lib/Intern");
 const managerQuestions = require("./lib/managerQuestions");
 const employeeQuestions = require("./lib/employeeQuestions");
-const inquire = require("inquirer");
+const inquirer = require("inquirer");
 const fs = require("fs");
 
 // start with an empty team
@@ -11,7 +11,7 @@ var teamList = [];
 
 // asks managerQuestions and sets the teamManager variable according to manager constructor
 function init() {
-  inquire.prompt(managerQuestions).then((managerInfo) => {
+  inquirer.prompt(managerQuestions).then((managerInfo) => {
     let teamManager = new Manager(
       managerInfo.name,
       1,
@@ -31,7 +31,7 @@ function init() {
 
 // asks for emplyee information
 function buildTeamList() {
-  inquire.prompt(employeeQuestions).then((employeeInfo) => {
+  inquirer.prompt(employeeQuestions).then((employeeInfo) => {
     if (employeeInfo.role === "engineer") {
       var newMember = new Engineer(
         employeeInfo.name,
