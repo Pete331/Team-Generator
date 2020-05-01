@@ -1,182 +1,238 @@
 const Manager = require("./lib/Manager");
 const Engineer = require("./lib/Engineer");
 const Intern = require("./lib/Intern");
-const inquirer = require("inquirer");
-const path = require("path");
+const inquire = require("inquirer");
 const fs = require("fs");
-// ​
-const OUTPUT_DIR = path.resolve(__dirname, "output");
-const outputPath = path.join(OUTPUT_DIR, "team.html");
-// ​
-const render = require("./lib/htmlRenderer");
 
-async function init() {
-  try {
-    //storing answers from Inquirer as object variable
-    const initiial = await initialPrompt();
-    const user = await addUser();
-  } catch (err) {
-    console.log(err);
+var teamList = [];
+const managerQuestions = [
+  {
+    type: "input",
+    name: "name",
+    default: "Pete",
+    message: "Enter manager name:",
+    validate: (answer) => {
+      if (answer === "") {
+        return "Please enter at least one character.";
+      }
+      return true;
+    },
+  },
+  {
+    type: "input",
+    name: "email",
+    message: "Enter manager's email:",
+    default: "Pete@work.com",
+    validate: (answer) => {
+      if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(answer)) {
+        return true;
+      }
+      return "Please enter a valid email address.";
+    },
+  },
+  {
+    type: "input",
+    name: "officeNum",
+    message: "Enter office number:",
+    default: "123",
+    validate: (answer) => {
+      if (isNaN(answer)) {
+        return "Please enter a number";
+      }
+      return true;
+    },
+  },
+  {
+    type: "list",
+    name: "hasTeam",
+    message: "Do you have any team members?",
+    choices: ["Yes", "No"],
+  },
+];
+
+const employeeQuestions = [
+  {
+    type: "input",
+    name: "name",
+    message: "Enter employee name:",
+    default: "Joe employee",
+    validate: (answer) => {
+      if (answer == "") {
+        return "Please enter at least one character.";
+      }
+      return true;
+    },
+  },
+  {
+    type: "input",
+    name: "email",
+    message: "Enter their email:",
+    default: "Joe@employee.com",
+    validate: (answer) => {
+      if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(answer)) {
+        return true;
+      }
+      return "Please enter a valid email address.";
+    },
+  },
+  {
+    type: "list",
+    name: "role",
+    message: "What is their role?",
+    choices: ["engineer", "intern"],
+  },
+  {
+    when: (input) => {
+      return input.role === "engineer";
+    },
+    type: "input",
+    name: "github",
+    message: "Engineer, enter your github username:",
+    default: "Pete331",
+    validate: (answer) => {
+      if (answer === "") {
+        return "Please enter at least one character";
+      }
+      return true;
+    },
+  },
+  {
+    when: (input) => {
+      return input.role === "intern";
+    },
+    type: "input",
+    name: "school",
+    message: "Intern, enter your school name:",
+    default: "UWA",
+    validate: (answer) => {
+      if (answer === "") {
+        return "Please enter at least one character.";
+      }
+      return true;
+    },
+  },
+  {
+    type: "list",
+    name: "addAnother",
+    message: "Add another team member?",
+    choices: ["Yes", "No"],
+  },
+];
+
+function buildTeamList() {
+  inquire.prompt(employeeQuestions).then((employeeInfo) => {
+    if (employeeInfo.role === "engineer") {
+      var newMember = new Engineer(
+        employeeInfo.name,
+        teamList.length + 1,
+        employeeInfo.email,
+        employeeInfo.github
+      );
+    } else {
+      var newMember = new Intern(
+        employeeInfo.name,
+        teamList.length + 1,
+        employeeInfo.email,
+        employeeInfo.school
+      );
+    }
+    teamList.push(newMember);
+    if (employeeInfo.addAnother === "Yes") {
+      console.log(" ");
+      buildTeamList();
+    } else {
+      buildHtmlPage();
+    }
+  });
+}
+
+function buildHtmlPage() {
+  fs.mkdir("./output", function (err) {
+    if (err) {
+      console.log(
+        "You already have an output directory, you have just overwritten the directory"
+      );
+    }
+  });
+  fs.writeFileSync(
+    "./output/teamPage.html",
+    fs.readFileSync("./templates/main.html"),
+    function (err) {
+      if (err) throw err;
+    }
+  );
+
+  console.log("Page generated!");
+
+  for (member of teamList) {
+    if (member.getRole() === "Manager") {
+      buildHtmlCard(
+        "manager",
+        member.getName(),
+        member.getId(),
+        member.getEmail(),
+        member.getOfficeNumber()
+      );
+    } else if (member.getRole() === "Engineer") {
+      buildHtmlCard(
+        "engineer",
+        member.getName(),
+        member.getId(),
+        member.getEmail(),
+        member.getGithub()
+      );
+    } else if (member.getRole() === "Intern") {
+      buildHtmlCard(
+        "intern",
+        member.getName(),
+        member.getId(),
+        member.getEmail(),
+        member.getSchool()
+      );
+    }
   }
+  // // adds html tags once all cards have been added
+  // fs.appendFileSync(
+  //   "./output/teamPage.html",
+  //   "</div></main></body></html>",
+  //   function (err) {
+  //     if (err) throw err;
+  //   }
+  // );
+  console.log(teamList);
+}
+
+function buildHtmlCard(memberType, name, id, email, additionalOutput) {
+  let data = fs.readFileSync(`./templates/${memberType}.html`, "utf8");
+  data = data.replace("{{ name }}", name);
+  data = data.replace("{{ role }}", memberType);
+  data = data.replace("{{ id }}", id);
+  data = data.replace("{{ email }}", email);
+  data = data.replace("{{ email }}", email);
+  data = data.replace("{{ additionalOutput }}", additionalOutput);
+  data = data.replace("{{ additionalOutput }}", additionalOutput);
+  fs.appendFileSync("./output/teamPage.html", data, (err) => {
+    if (err) throw err;
+  });
+  console.log(`${memberType} Card appended`);
+}
+
+function init() {
+  inquire.prompt(managerQuestions).then((managerInfo) => {
+    let teamManager = new Manager(
+      managerInfo.name,
+      1,
+      managerInfo.email,
+      managerInfo.officeNum
+    );
+    teamList.push(teamManager);
+    console.log(" ");
+    if (managerInfo.hasTeam === "Yes") {
+      buildTeamList();
+    } else {
+      buildHtmlPage();
+    }
+  });
 }
 
 init();
-
-function initialPrompt() {
-  return inquirer.prompt([
-    {
-      type: "list",
-      message: "What would you like to do?",
-      name: "prompt",
-      choices: ["Add user", "Create html page"],
-    },
-  ]);
-}
-
-function addUser() {
-  return inquirer.prompt([
-    {
-      type: "input",
-      message: "What is your name?",
-      name: "username",
-      default: "Pete",
-    },
-    {
-      type: "number",
-      message: "What is your ID?",
-      name: "ID",
-      default: "123",
-    },
-    {
-      type: "input",
-      message: "What is your email address?",
-      name: "email",
-      default: "pete@email.com",
-    },
-    {
-      type: "list",
-      message: "What is your Role?",
-      name: "role",
-      choices: ["Manager", "Engineer", "Intern"],
-    },
-    {
-      type: "number",
-      message: `What is your office number?`,
-      name: "officeNumber",
-      when: function (answers) {
-        return answers.role.includes("Manager");
-      },
-    },
-    {
-      type: "input",
-      message: `What is your GitHub username?`,
-      name: "githubUsername",
-      when: function (answers) {
-        return answers.role.includes("Engineer");
-      },
-    },
-    {
-      type: "input",
-      message: `What is your school?`,
-      name: "school",
-      when: function (answers) {
-        return answers.role.includes("Intern");
-      },
-    },
-  ]);
-}
-
-// function questionsForReadme(repoArray) {
-//     return inquirer.prompt([
-//       {
-//         type: "list",
-//         message: "Which repo would you like to create a README.md for?",
-//         name: "repo",
-//         choices: repoArray,
-//       },
-//       {
-//         type: "input",
-//         message:
-//           "What Would you like the Title to be? (leave blank to use repo name)",
-//         name: "Title",
-//         default: function (answers) {
-//           return answers.repo;
-//         },
-//       },
-//       {
-//         type: "input",
-//         message: "Add a decription:",
-//         name: "Description",
-//       },
-//       {
-//         type: "checkbox",
-//         message:
-//           "Which of the following would you like included in your README.md file?",
-//         name: "checkboxoptions",
-//         choices: [
-//           "Table of Contents",
-//           "Installation",
-//           "Usage",
-//           "License",
-//           "Contributing",
-//           "Tests",
-//           "Questions",
-//         ],
-//       },
-//       {
-//         type: "input",
-//         message: `What would you like in your Installation?`,
-//         name: "Installation",
-//         when: function (answers) {
-//           return answers.checkboxoptions.includes("Installation");
-//         },
-//       },
-//       {
-//         type: "input",
-//         message: `What would you like in your Usage?`,
-//         name: "Usage",
-//         when: function (answers) {
-//           return answers.checkboxoptions.includes("Usage");
-//         },
-//       },
-//       {
-//         type: "list",
-//         message: `What would you like in your License?`,
-//         name: "License",
-//         choices: [
-//           "MIT License",
-//           "Apache License 2.0",
-//           "GNU General Public License",
-//           "None",
-//           "Other",
-//         ],
-//         when: function (answers) {
-//           return answers.checkboxoptions.includes("License");
-//         },
-//       },
-//       {
-//         type: "input",
-//         message: `What would you like in your Contributing?`,
-//         name: "Contributing",
-//         when: function (answers) {
-//           return answers.checkboxoptions.includes("Contributing");
-//         },
-//       },
-//       {
-//         type: "input",
-//         message: `What would you like in your Tests?`,
-//         name: "Tests",
-//         when: function (answers) {
-//           return answers.checkboxoptions.includes("Tests");
-//         },
-//       },
-//       {
-//         type: "input",
-//         message: `What would you like in your Questions?`,
-//         name: "Questions",
-//         when: function (answers) {
-//           return answers.checkboxoptions.includes("Questions");
-//         },
-//       },
-//     ]);
-//   }
